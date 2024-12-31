@@ -4,14 +4,14 @@ import logging
 
 from typing import Optional
 from aio_pika import IncomingMessage, Queue
-from config.rabbitmq_connection_queue import RabbitMqConnectionQueue
+from listeners.rabbitmq_connection_consumer_queue import RabbitMqConnectionConsumer
 from model.payment import Payment
 from service.customer_risk_service import CustomerRiskService
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 class RiskListener:
-    def __init__(self, connection: RabbitMqConnectionQueue, customer_risk_service: CustomerRiskService):
+    def __init__(self, connection: RabbitMqConnectionConsumer, customer_risk_service: CustomerRiskService):
         self.queue: Optional[Queue] = None
         self.connection = connection
         self.customer_risk_service = customer_risk_service
@@ -35,7 +35,7 @@ class RiskListener:
             try:
                 data = json.loads(message.body)
                 logger.info(f"received message: {data}")
-                self.customer_risk_service.analyze(Payment(**data))
+                await self.customer_risk_service.analyze(Payment(**data))
             except json.JSONDecodeError:
                 logger.error(f"failed to decode message: {data}")
             except Exception:

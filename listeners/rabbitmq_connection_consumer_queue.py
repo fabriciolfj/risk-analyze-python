@@ -10,7 +10,7 @@ from config.rabbitmq_connection import RabbitMqConnection
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-class RabbitMqConnectionQueue:
+class RabbitMqConnectionConsumer:
 
     def __init__(self):
         self.channel = None
@@ -19,8 +19,10 @@ class RabbitMqConnectionQueue:
     async def connect(self):
         try:
             rabbitmq_config = RabbitMqConfig()
+            rabbit_connection = RabbitMqConnection()
+            connection = await rabbit_connection.connect()
 
-            self.channel = await RabbitMqConnection().connect()
+            self.channel = await connection.channel()
 
             self.queue = await self.channel.declare_queue(
                 rabbitmq_config.queue,
@@ -35,6 +37,6 @@ class RabbitMqConnectionQueue:
 
 
     async def close(self):
-        if self.connection:
-            await self.connection.close()
+        if self.channel:
+            await self.channel.close()
             logger.info("closing rabbitmq connection")

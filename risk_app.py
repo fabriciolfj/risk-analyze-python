@@ -8,7 +8,7 @@ from typing import Optional
 from contextlib import AsyncExitStack
 from datetime import datetime
 from clients.bureau_customer import BureauCustomer
-from config.rabbitmq_connection_queue import RabbitMqConnectionQueue
+from listeners.rabbitmq_connection_consumer_queue import RabbitMqConnectionConsumer
 from listeners.listener_risk_queue import RiskListener
 from service.customer_risk_service import CustomerRiskService
 
@@ -32,14 +32,14 @@ def setup_logging():
 logger = setup_logging()
 class RiskApp:
     def __init__(self):
-        self.connection: Optional[RabbitMqConnectionQueue] = None
+        self.connection: Optional[RabbitMqConnectionConsumer] = None
         self.consumer: Optional[RiskListener] = None
         self.exit_stack = AsyncExitStack()
         self._shutdown_event = asyncio.Event()
 
     async def startup(self) -> None:
         try:
-            self.connection = RabbitMqConnectionQueue()
+            self.connection = RabbitMqConnectionConsumer()
             bureau = BureauCustomer()
             customer_risk_service = CustomerRiskService(bureau)
             self.consumer = RiskListener(self.connection, customer_risk_service)

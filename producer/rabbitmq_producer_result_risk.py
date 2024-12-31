@@ -2,16 +2,15 @@ import configparser
 import json
 import logging
 
-from typing import Dict, Any
 from aio_pika import Message, DeliveryMode
-
 from config.rabbitmq_connection import RabbitMqConnection
+from model.customer_risk import CustomerRisk
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 class RabbitMqProducerResultRisk:
 
-    def __init__(self, rabbitmq):
+    def __init__(self):
         self.channel = None
         self.connection = None
         config = configparser.ConfigParser()
@@ -21,10 +20,11 @@ class RabbitMqProducerResultRisk:
 
     async def connect(self) -> None:
         try:
-            self.connection = RabbitMqConnection().connection
-            self.channel = await self.connection.connect()
-            self.queue = await (self.channel.
-                                declare_queue(queue_name=self.queue))
+            rabbitmq_connection = RabbitMqConnection()
+            connection = await rabbitmq_connection.connect()
+
+            self.channel = await connection.channel()
+            self.connection = connection
 
             logger.info("producer result risk connected")
         except Exception as e:
@@ -32,13 +32,16 @@ class RabbitMqProducerResultRisk:
             raise
 
 
-    async def send_message(self, data: Dict[str, Any]) -> None:
+    async def send_message(self, customer: CustomerRisk) -> None:
         try:
             if not self.connection or self.connection.is_closed:
                 await self.connect()
 
+            if not self.channel:
+                await self.connect()
+
             message = Message(
-                body=json.dumps(data).encode(),
+                body=json.dumps(customer.to_dict()).encode(),
                 delivery_mode=DeliveryMode.PERSISTENT,
                 content_type='application/json'
             )
@@ -48,7 +51,7 @@ class RabbitMqProducerResultRisk:
                 routing_key=self.queue
             )
 
-            logger.info(f"message send: {data}")
+            logger.info(f"message send: {customer}")
 
         except Exception as e:
             logger.error(f"fail send message: {str(e)}")
