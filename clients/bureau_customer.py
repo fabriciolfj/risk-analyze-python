@@ -1,6 +1,8 @@
 import configparser
 import logging
 import requests
+
+from config.config_properties import ConfigProperties
 from model.customer_risk import CustomerRisk
 from model.payment import Payment
 
@@ -10,10 +12,9 @@ class BureauCustomer:
 
 
     def request(self, payment: Payment):
-        config = configparser.ConfigParser()
-        config.read('config.ini')
+        properties = ConfigProperties()
 
-        url = config['customer']['url']
+        url = properties.config['customer']['url']
         try:
             result = requests.get(f"{url}/{payment.customer}/card/{payment.identifier}")
             return CustomerRisk(**result.json())
