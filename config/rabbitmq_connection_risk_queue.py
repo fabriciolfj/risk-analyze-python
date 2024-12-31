@@ -1,10 +1,9 @@
-import configparser
+
 from typing import Optional
-
 from aio_pika import connect_robust, Queue
-import logging
+from config.rabbitm_risk_properties import RabbitMqRiskProperties
 
-from config.rabbitmq_config import RabbitMqConfig
+import logging
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -18,15 +17,13 @@ class RabbitMqConnectionRiskQueue:
 
     async def connect(self):
         try:
-            rabbitmq_config = RabbitMqConfig()
-            config = configparser.ConfigParser()
-            config.read('config.ini')
+            rabbitmq_config = RabbitMqRiskProperties()
 
             self.connection = await connect_robust(rabbitmq_config.url)
             self.channel = await self.connection.channel()
 
             self.queue = await self.channel.declare_queue(
-                config['rabbitmq']['queue_name'],
+                rabbitmq_config.queue,
                 durable=True
             )
 

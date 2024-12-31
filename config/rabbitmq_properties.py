@@ -1,7 +1,7 @@
 import configparser
 
 
-class RabbitMqConfig:
+class RabbitMqProperties:
 
     def __init__(self):
         config = configparser.ConfigParser()
