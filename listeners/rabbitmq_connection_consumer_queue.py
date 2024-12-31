@@ -1,10 +1,8 @@
-
-from typing import Optional
-from aio_pika import connect_robust, Queue
-from config.rabbitmq_config import RabbitMqConfig
-
 import logging
 
+from typing import Optional
+from aio_pika import Queue
+from config.config_properties import ConfigProperties
 from config.rabbitmq_connection import RabbitMqConnection
 
 logging.basicConfig(level=logging.INFO)
@@ -15,21 +13,21 @@ class RabbitMqConnectionConsumer:
     def __init__(self):
         self.channel = None
         self.queue : Optional[Queue] = None
+        self.properties = ConfigProperties()
+        self.config_connection = RabbitMqConnection()
 
     async def connect(self):
         try:
-            rabbitmq_config = RabbitMqConfig()
-            rabbit_connection = RabbitMqConnection()
-            connection = await rabbit_connection.connect()
+            await self.config_connection.connect()
 
-            self.channel = await connection.channel()
+            self.channel = self.config_connection.channel
 
             self.queue = await self.channel.declare_queue(
-                rabbitmq_config.queue,
+                self.properties.config['rabbitmq']['queue_name'],
                 durable=True
             )
 
-            logger.info(f"connect rabbitmq {rabbitmq_config.url}")
+            logger.info(f"connect rabbitmq")
             return self.queue
         except Exception as e:
             logger.error(f"error connect rabbitmq, details: {str(e)}")

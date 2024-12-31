@@ -9,20 +9,23 @@ logger = logging.getLogger(__name__)
 class RabbitMqConnection:
 
     def __init__(self):
-        self.connection = None
+        self.channel = None
+        self._connection = None
+        self._config = RabbitMqConfig()
 
     async def connect(self):
         try:
-            rabbitmq_config = RabbitMqConfig()
+            self._connection = await connect_robust(self._config.url)
 
-            self.connection = await connect_robust(rabbitmq_config.url)
-            return self.connection
+            self.channel = await self._connection.channel()
         except Exception as e:
             logger.error(f"error connect rabbitmq, details: {str(e)}")
             raise
 
-
     async def close(self):
-        if self.connection:
-            await self.connection.close()
+        if self._connection:
+            await self._connection.close()
             logger.info("closing rabbitmq connection")
+
+    def isClosed(self):
+        return self._connection
