@@ -1,26 +1,26 @@
 
 from typing import Optional
 from aio_pika import connect_robust, Queue
-from config.rabbitm_risk_properties import RabbitMqRiskProperties
+from config.rabbitmq_config import RabbitMqConfig
 
 import logging
+
+from config.rabbitmq_connection import RabbitMqConnection
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-class RabbitMqConnectionRiskQueue:
+class RabbitMqConnectionQueue:
 
     def __init__(self):
         self.channel = None
-        self.connection = None
         self.queue : Optional[Queue] = None
 
     async def connect(self):
         try:
-            rabbitmq_config = RabbitMqRiskProperties()
+            rabbitmq_config = RabbitMqConfig()
 
-            self.connection = await connect_robust(rabbitmq_config.url)
-            self.channel = await self.connection.channel()
+            self.channel = await RabbitMqConnection().connect()
 
             self.queue = await self.channel.declare_queue(
                 rabbitmq_config.queue,

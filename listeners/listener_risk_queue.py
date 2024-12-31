@@ -1,32 +1,20 @@
 import asyncio
 import json
 import logging
+
 from typing import Optional
-
 from aio_pika import IncomingMessage, Queue
-
-from config.rabbitmq_connection_risk_queue import RabbitMqConnectionRiskQueue
-from model.Payment import Payment
+from config.rabbitmq_connection_queue import RabbitMqConnectionQueue
+from model.payment import Payment
+from service.customer_risk_service import CustomerRiskService
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 class RiskListener:
-    def __init__(self, connection: RabbitMqConnectionRiskQueue):
+    def __init__(self, connection: RabbitMqConnectionQueue, customer_risk_service: CustomerRiskService):
         self.queue: Optional[Queue] = None
         self.connection = connection
-
-
-    async def process_message(self, message: IncomingMessage):
-        async with message.process():
-            try:
-                data = json.loads(message.body)
-                logger.info(f"received message: {data}")
-                return Payment(**data)
-            except json.JSONDecodeError:
-                logger.error(f"failed to decode message: {data}")
-            except Exception as e:
-                logger.error(f"failed receive message: {data}")
-                await message.reject(requeue=True)
+        self.customer_risk_service = customer_risk_service
 
     async def start(self):
         try:
@@ -35,9 +23,39 @@ class RiskListener:
 
             logger.info("consumidor iniciado, aguardando mensagens...")
             await asyncio.Future()
-
         except Exception as e:
             logger.error(f"Erro no consumidor: {str(e)}")
             raise
         finally:
             await self.connection.close()
+
+
+    async def process_message(self, message: IncomingMessage):
+        async with message.process():
+            try:
+                data = json.loads(message.body)
+                logger.info(f"received message: {data}")
+                self.customer_risk_service.analyze(Payment(**data))
+            except json.JSONDecodeError:
+                logger.error(f"failed to decode message: {data}")
+            except Exception:
+                logger.error(f"failed receive message: {data}")
+                await message.reject(requeue=True)
+
+
+    async def stop(self):
+        try:
+            logger.info("init stop consumer")
+
+            if self.queue and self.queue.channel:
+                await self.queue.channel.close()
+
+            if self.connection:
+                await self.connection.close()
+
+            self.queue = None
+            logger.info("consumer stoped successfully")
+
+        except Exception as e:
+            logger.error(f"error stop consumer: {str(e)}")
+            raise

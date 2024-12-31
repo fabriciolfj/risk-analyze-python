@@ -3,7 +3,7 @@ import configparser
 from config.rabbitmq_properties import RabbitMqProperties
 
 
-class RabbitMqRiskProperties:
+class RabbitMqConfig:
 
     def __init__(self):
         properties = RabbitMqProperties()
