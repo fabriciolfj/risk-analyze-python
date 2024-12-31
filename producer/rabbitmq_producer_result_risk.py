@@ -3,7 +3,9 @@ import json
 import logging
 
 from aio_pika import Message, DeliveryMode
+from pip._internal.configuration import Configuration
 
+from config.config_properties import ConfigProperties
 from config.rabbitmq_connection import RabbitMqConnection
 from exceptions.rabbit_exception import RabbitMqError
 from model.customer_risk import CustomerRisk
@@ -13,17 +15,15 @@ logger = logging.getLogger(__name__)
 class RabbitMqProducerResultRisk:
 
     def __init__(self):
-        self.queue = None
+        properties = ConfigProperties()
+        self.queue = properties.config['rabbitmq']['queue_result_risk']
         self.config_connection = RabbitMqConnection()
-        self._load_config()
+        self.connection = None
 
     async def send_message(self, customer: CustomerRisk) -> None:
         try:
-            if not self.config_connection.isClosed():
-                await self._connect()
-
-            if not self.config_connection.channel:
-                await self._connect()
+            if self.config_connection.is_closed():
+                self.connection = await self.config_connection.connect()
 
             message = Message(
                 body=json.dumps(customer.to_dict()).encode(),
@@ -31,8 +31,8 @@ class RabbitMqProducerResultRisk:
                 content_type='application/json'
             )
 
-            channel = self.config_connection.channel
-            await channel.default_exchange.publish(
+            channel = await self.connection.channel()
+            channel.default_exchange.publish(
                 message,
                 routing_key=self.queue
             )
@@ -48,20 +48,3 @@ class RabbitMqProducerResultRisk:
         if self.connection and not self.connection.is_closed:
             await self.connection.close()
             logger.info("conection closed")
-
-    def _load_config(self) -> None:
-        try:
-            config = configparser.ConfigParser()
-            config.read("config.ini")
-            self.queue = config.get('rabbitmq', 'queue_result_risk')
-        except (configparser.Error, KeyError) as e:
-            logger.error(f"Configuration error: {str(e)}")
-            raise RabbitMqError(f"failed to load configuration: {str(e)}")
-
-    async def _connect(self) -> None:
-        try:
-            await self.config_connection.connect()
-            logger.info("producer result risk connected")
-        except Exception as e:
-            logger.error(f"producer result risk error: {e}")
-            raise
