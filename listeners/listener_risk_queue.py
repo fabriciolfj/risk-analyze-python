@@ -34,7 +34,9 @@ class RiskListener:
         async with message.process():
             try:
                 data = json.loads(message.body)
+
                 logger.info(f"received message: {data}")
+
                 await self.customer_risk_service.analyze(Payment(**data))
             except json.JSONDecodeError:
                 logger.error(f"failed to decode message: {data}")

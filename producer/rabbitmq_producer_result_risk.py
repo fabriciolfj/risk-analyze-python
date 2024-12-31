@@ -1,13 +1,9 @@
-import configparser
 import json
 import logging
 
 from aio_pika import Message, DeliveryMode
-from pip._internal.configuration import Configuration
-
 from config.config_properties import ConfigProperties
 from config.rabbitmq_connection import RabbitMqConnection
-from exceptions.rabbit_exception import RabbitMqError
 from model.customer_risk import CustomerRisk
 
 logging.basicConfig(level=logging.INFO)
