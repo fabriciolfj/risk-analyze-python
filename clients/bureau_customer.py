@@ -18,3 +18,4 @@ class BureauCustomer:
             r = requests.get(f"url/{payment.customer}/identifier/{payment.identifier}")
         except Exception as e:
             logger.error(f"fail request customer {payment.customer}, details {e}")
+            raise e
