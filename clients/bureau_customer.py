@@ -17,7 +17,7 @@ class BureauCustomer:
         try:
             result = requests.get(f"{url}/{payment.customer}/card/{payment.identifier}")
             customerRisk = CustomerRisk(**result.json())
-            customerRisk.customerId = payment.customer
+            customerRisk.identifier = payment.identifier
 
             return customerRisk
         except Exception as e:
