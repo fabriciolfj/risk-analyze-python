@@ -113,8 +113,6 @@ class RiskApp:
         self.__listener            = RiskListener(self.__connection_consumer, self.__service)
         self.__exit_stack          = Optional[AsyncExitStack]
 
-
-
 async def main() -> None:
     app = RiskApp()
 
