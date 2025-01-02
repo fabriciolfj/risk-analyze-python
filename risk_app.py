@@ -72,8 +72,8 @@ class RiskApp:
         if platform.system() == 'Windows':
             try:
                 asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-            except:
-                logger.warning("not possibility WindowsSelectorEventLoopPolicy")
+            except Exception as e:
+                logger.warning(f"not possibility WindowsSelectorEventLoopPolicy, details: ${e}", exc_info=e)
         else:
             for sig in (signal.SIGTERM, signal.SIGINT):
                 try:
