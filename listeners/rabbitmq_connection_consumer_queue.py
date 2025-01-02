@@ -11,11 +11,11 @@ logger = logging.getLogger(__name__)
 
 class RabbitMqConnectionConsumer:
 
-    def __init__(self):
+    def __init__(self, connection: RabbitMqConnection):
         self._channel : Optional[Channel] = None
         self._queue : Optional[Queue] = None
         self.properties = ConfigProperties()
-        self.config_connection = RabbitMqConnection()
+        self.config_connection = connection
 
     async def connect(self):
         try:

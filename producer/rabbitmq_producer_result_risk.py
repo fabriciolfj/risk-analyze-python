@@ -10,16 +10,16 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 class RabbitMqProducerResultRisk:
 
-    def __init__(self):
+    def __init__(self, config_connection: RabbitMqConnection):
         properties = ConfigProperties()
-        self.queue = properties.config['rabbitmq']['queue_result_risk']
-        self.config_connection = RabbitMqConnection()
-        self.connection = None
+        self.__queue = properties.config['rabbitmq']['queue_result_risk']
+        self.__config_connection = config_connection
+        self.__connection = None
 
     async def send_message(self, customer: CustomerRisk) -> None:
         try:
-            if self.config_connection.is_closed():
-                self.connection = await self.config_connection.connect()
+            if self.__config_connection.is_closed() or self.__connection is None:
+                self.__connection = await self.__config_connection.connect()
 
             message = Message(
                 body=json.dumps(customer.to_dict()).encode(),
@@ -27,10 +27,10 @@ class RabbitMqProducerResultRisk:
                 content_type='application/json'
             )
 
-            channel = await self.connection.channel()
+            channel = await self.__connection.channel()
             channel.default_exchange.publish(
                 message,
-                routing_key=self.queue
+                routing_key=self.__queue
             )
 
             logger.info(f"message send: {customer}")
@@ -41,6 +41,6 @@ class RabbitMqProducerResultRisk:
 
 
     async def close(self) -> None:
-        if self.connection and not self.connection.is_closed:
-            await self.connection.close()
+        if self.__connection and not self.__connection.is_closed:
+            await self.__connection.close()
             logger.info("conection closed")

@@ -8,8 +8,10 @@ from typing import Optional
 from contextlib import AsyncExitStack
 from datetime import datetime
 from clients.bureau_customer import BureauCustomer
+from config.rabbitmq_connection import RabbitMqConnection
 from listeners.rabbitmq_connection_consumer_queue import RabbitMqConnectionConsumer
 from listeners.listener_risk_queue import RiskListener
+from producer.rabbitmq_producer_result_risk import RabbitMqProducerResultRisk
 from service.customer_risk_service import CustomerRiskService
 
 
@@ -32,19 +34,21 @@ def setup_logging():
 logger = setup_logging()
 class RiskApp:
     def __init__(self):
-        self.connection: Optional[RabbitMqConnectionConsumer] = None
-        self.consumer: Optional[RiskListener] = None
-        self.exit_stack = AsyncExitStack()
-        self._shutdown_event = asyncio.Event()
+        self.__connection_consumer: Optional[RabbitMqConnectionConsumer] = None
+        self.__listener:            Optional[RiskListener] = None
+        self.__rabbit_connection:   Optional[RabbitMqConnection] = None
+        self.__producer_connection: Optional[RabbitMqProducerResultRisk] = None
+        self.__exit_stack:          Optional[AsyncExitStack] = None
+        self.__bureau_customer:     Optional[BureauCustomer] = None
+        self.__service:             Optional[CustomerRiskService] = None
+        self.__shutdown_event = asyncio.Event()
 
     async def startup(self) -> None:
         try:
-            self.connection = RabbitMqConnectionConsumer()
-            bureau = BureauCustomer()
-            customer_risk_service = CustomerRiskService(bureau)
-            self.consumer = RiskListener(self.connection, customer_risk_service)
+            self.__load_configs()
 
-            await self.consumer.start()
+            await self.__listener.start()
+
             logger.info("services started successfully")
 
         except Exception as e:
@@ -55,13 +59,13 @@ class RiskApp:
     async def shutdown(self) -> None:
         logger.info("init off gracefully...")
 
-        if self.consumer:
-            await self.consumer.stop()
+        if self.__listener:
+            await self.__listener.stop()
 
-        if self.connection:
-            await self.connection.close()
+        if self.__connection_consumer:
+            await self.__connection_consumer.close()
 
-        await self.exit_stack.aclose()
+        await self.__exit_stack.aclose()
         logger.info("app finished successfully")
 
     def handle_signals(self) -> None:
@@ -82,7 +86,7 @@ class RiskApp:
 
     async def handle_shutdown(self, sig: signal.Signals) -> None:
         logger.info(f"receive signal de shutdown: {sig.name}")
-        self._shutdown_event.set()
+        self.__shutdown_event.set()
 
     async def run(self) -> None:
         try:
@@ -90,15 +94,26 @@ class RiskApp:
             await self.startup()
 
             logger.info("started consumer risk")
-            await self.consumer.start()
+            await self.__listener.start()
 
-            await self._shutdown_event.wait()
+            await self.__shutdown_event.wait()
 
         except Exception as e:
             logger.error("error execution", exc_info=e)
             raise
         finally:
             await self.shutdown()
+
+    def __load_configs(self):
+        self.__rabbit_connection   = RabbitMqConnection()
+        self.__connection_consumer = RabbitMqConnectionConsumer(self.__rabbit_connection)
+        self.__producer_connection = RabbitMqProducerResultRisk(self.__rabbit_connection)
+        self.__bureau_customer     = BureauCustomer()
+        self.__service             = CustomerRiskService(self.__bureau_customer, self.__producer_connection)
+        self.__listener            = RiskListener(self.__connection_consumer, self.__service)
+        self.__exit_stack          = Optional[AsyncExitStack]
+
+
 
 async def main() -> None:
     app = RiskApp()
